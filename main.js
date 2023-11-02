@@ -5,7 +5,7 @@ window.onload = function() {
 let map = {};
 let baloons = {};
 let fetchInterval = 10;// fetch baloons every 10 seconds
-
+let markers = []; //should be deleted later
 
 async function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
