@@ -1,1 +1,1 @@
-pub mod hourly_weather;
+pub mod model;

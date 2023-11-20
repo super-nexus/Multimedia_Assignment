@@ -1,8 +1,8 @@
 mod wind;
 mod baloon;
 
-use wind::hourly_weather::{ApiResponse, Weather};
-use baloon::baloons::{Baloon, Latlng};
+use wind::model::{ApiResponse, Weather};
+use baloon::model::{Baloon, Latlng};
 use std::collections::HashMap;
 use chrono::{Duration, Utc, DateTime, Timelike};
 use std::fs::File;
@@ -21,7 +21,7 @@ async fn main() -> Result<(), reqwest::Error> {
     weather = fetch_weather_data(LAT, LNG).await.ok();
     let file_path = "/Users/andrijakuzmanov/Documents/code/faks/MULTI/Multimedia_Assignment/baloons.json";
     let baloons: Vec<Baloon> = get_baloons_data(file_path).unwrap_or_else(|| Vec::new());
-    let mut clustered_baloons: HashMap<String, Vec<Baloon>> = baloon::baloons::cluster_baloons(baloons);
+    let mut clustered_baloons: HashMap<String, Vec<Baloon>> = baloon::util::cluster_baloons(baloons);
     let weather_data: Vec<ApiResponse> = Vec::new();
     update_baloons(&mut clustered_baloons, &weather_data).await;
 
@@ -70,7 +70,7 @@ async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weat
         // Update baloons
         for baloon in baloons {
             // update baloon coordinates
-            baloon::baloons::move_baloon(baloon, &weather_for_current_hour);
+            baloon::util::move_baloon(baloon, &weather_for_current_hour);
         }
     }
 }

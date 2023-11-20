@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::wind::model::Weather;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ApiResponse {
@@ -6,12 +7,4 @@ pub struct ApiResponse {
     pub lon: f32,
     pub current: Weather,
     pub hourly: Vec<Weather>
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Weather {
-    pub dt: i64,
-    pub wind_speed: f32,
-    pub wind_deg: u16,
-    pub wind_gust: f32,
 }

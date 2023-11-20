@@ -1,55 +1,13 @@
-
-use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use crate::wind::hourly_weather::Weather;
+use crate::wind::model::Weather;
+use crate::baloon::model::{Baloon, Latlng};
 use rand::Rng;
 
-const EARTH_RADIUS_KM: f32 = 6371.0; // Earth's radius in kilometers
 const MAX_DISTANCE_KM: f32 = 10.0; // Define a maximum distance for clustering in kilometers
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Baloons {
-    pub baloons: Vec<Baloon>
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Baloon {
-    pub lat: f32,
-    pub lng: f32,
-    pub message: String,
-    pub owner: String
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Latlng {
-    pub lat: f32,
-    pub lng: f32
-}
-
-impl Latlng {
-    pub fn distance(&self, other: &Latlng) -> f32 {
-        let dlat = (other.lat - self.lat).to_radians();
-        let dlng = (other.lng - self.lng).to_radians();
-        let a = (dlat / 2.0).sin().powi(2) +
-                self.lat.to_radians().cos() * other.lat.to_radians().cos() *
-                (dlng / 2.0).sin().powi(2);
-        let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
-        EARTH_RADIUS_KM * c
-    }
-
-    pub fn from_string(latlng: &str) -> Latlng {
-        let parsed = latlng.split(",")
-            .map(|part| part.parse::<f32>().expect("Could not parse latlng"))
-            .collect::<Vec<f32>>();
-
-        Latlng { lat: parsed[0], lng: parsed[1] }
-    }
-}
 
 fn create_latlng_key(lat: f32, lng: f32) -> String {
     format!("{:.5},{:.5}", lat, lng)
 }
-
 
 // Cluster balloons function
 pub fn cluster_baloons(baloons: Vec<Baloon>) -> HashMap<String, Vec<Baloon>> {
