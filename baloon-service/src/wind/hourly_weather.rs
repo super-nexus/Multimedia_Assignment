@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ApiResponse {
     pub lat: f32,
     pub lon: f32,
@@ -8,7 +8,7 @@ pub struct ApiResponse {
     pub hourly: Vec<Weather>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Weather {
     pub dt: i64,
     pub wind_speed: f32,
