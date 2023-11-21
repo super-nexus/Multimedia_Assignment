@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::wind::model::Weather;
+use crate::weather::model::Weather;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ApiResponse {

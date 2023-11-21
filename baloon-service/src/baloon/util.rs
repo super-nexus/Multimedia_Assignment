@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::wind::model::Weather;
+use crate::weather::model::Weather;
 use crate::baloon::model::{Baloon, Latlng};
 use rand::Rng;
 

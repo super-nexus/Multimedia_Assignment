@@ -1,56 +1,44 @@
-mod wind;
+mod weather;
 mod baloon;
 
-use wind::model::{ApiResponse, Weather};
+use weather::model::ApiResponse;
 use baloon::model::{Baloon, Latlng};
 use std::collections::HashMap;
-use chrono::{Duration, Utc, DateTime, Timelike};
 use std::fs::File;
 use std::io::prelude::*;
+use dotenv::dotenv;
 
 const MAX_DISTANCE_KM: f32 = 10.0;
 
 #[tokio::main]
 async fn main() -> Result<(), reqwest::Error> {
+    dotenv().ok();
 
     let mut weather: Option<ApiResponse> = None;
 
-    const LAT: f32 = 4.48;
-    const LNG: f32 = 52.15;
-
-    weather = fetch_weather_data(LAT, LNG).await.ok();
     let file_path = "/Users/andrijakuzmanov/Documents/code/faks/MULTI/Multimedia_Assignment/baloons.json";
-    let baloons: Vec<Baloon> = get_baloons_data(file_path).unwrap_or_else(|| Vec::new());
-    let mut clustered_baloons: HashMap<String, Vec<Baloon>> = baloon::util::cluster_baloons(baloons);
-    let weather_data: Vec<ApiResponse> = Vec::new();
-    update_baloons(&mut clustered_baloons, &weather_data).await;
-
-    println!("{:?}", clustered_baloons);
+    let mut weather_data: Vec<ApiResponse> = Vec::new();
 
     loop {
-        if data_outdated(&weather) {
-            weather = fetch_weather_data(LAT, LNG).await.ok();
-        }
+        println!("1. Running loop");
+        println!("2. Remove outdated weather data");
+        weather::util::remove_outdated_weather(&mut weather_data);
+
+        println!("3. Fetching baloons");
+        let baloons: Vec<Baloon> = get_baloons_data(file_path).unwrap_or_else(|| Vec::new());
+
+        println!("4. Clustering baloons");
+        let mut clustered_baloons: HashMap<String, Vec<Baloon>> = baloon::util::cluster_baloons(baloons);
+
+        println!("5. Updating baloons");
+        update_baloons(&mut clustered_baloons, &weather_data).await;
+
+        // Pop baloons here
+
+        println!("6. Store updated baloons");
+        store_baloons(&clustered_baloons, file_path).await;
 
         std::thread::sleep(std::time::Duration::from_secs(10));
-    }
-}
-
-async fn fetch_weather_data(_lat: f32, _lng: f32) -> Result<ApiResponse, reqwest::Error> {
-    let url = format!("https://api.openweathermap.org/data/3.0/onecall?lat=4.48&lon=52.15&appid=dbde08b4797828949a4cf02ba7c369fe");
-    let response = reqwest::get(&url).await?.json::<ApiResponse>().await?;
-    Ok(response)
-}
-
-fn data_outdated(weather: &Option<ApiResponse>) -> bool {
-    if let Some(current_weather) = weather {
-        let now: DateTime<Utc> = Utc::now();
-        let last_update: DateTime<Utc> = DateTime::<Utc>::from_timestamp(current_weather.current.dt, 0).expect("Could not parse timestamp");
-        let duration: Duration = now - last_update;
-
-        duration > Duration::hours(45)
-    } else {
-        true
     }
 }
 
@@ -65,7 +53,7 @@ fn get_baloons_data(path: &str) -> Option<Vec<Baloon>> {
 async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weather_data: &Vec<ApiResponse>) {
     for (key, baloons) in baloons_cluster.iter_mut() {
         let closest_weather_data = get_closest_weather_data(key, weather_data).await;
-        let weather_for_current_hour = get_weather_data_for_current_hour(&closest_weather_data);
+        let weather_for_current_hour = weather::util::get_weather_data_for_current_hour(&closest_weather_data);
         
         // Update baloons
         for baloon in baloons {
@@ -73,6 +61,17 @@ async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weat
             baloon::util::move_baloon(baloon, &weather_for_current_hour);
         }
     }
+}
+
+async fn store_baloons(baloons_cluster: &HashMap<String, Vec<Baloon>>, file_path: &str) {
+    // Map all baloons to a single vector
+    let all_baloons: Vec<Baloon> = baloons_cluster.values()
+        .flat_map(|baloons| baloons.iter().cloned())
+        .collect();
+    
+    let json = serde_json::to_string(&all_baloons).expect("Could not serialize baloons");
+    let mut file = File::create(file_path).expect("Could not create file");
+    file.write_all(json.as_bytes()).expect("Could not write to file");
 }
 
 async fn get_closest_weather_data(latlng_key: &str, weather_data: &Vec<ApiResponse>) -> ApiResponse {
@@ -89,39 +88,15 @@ async fn get_closest_weather_data(latlng_key: &str, weather_data: &Vec<ApiRespon
     }
 
     match current_closest_weather {
-        Some(weather) => weather,
-        None => 
-            fetch_weather_data(baloon_latlng.lat, baloon_latlng.lng)
+        Some(weather) => {
+            println!("Found weather data for baloon cluster at {}, {}", baloon_latlng.lat, baloon_latlng.lng);
+            weather
+        },
+
+        None => {
+            println!("Fetching weather data for baloon cluster at {}, {}", baloon_latlng.lat, baloon_latlng.lng);
+            weather::util::fetch_weather_data(baloon_latlng.lat, baloon_latlng.lng)
                 .await.ok().expect("Could not fetch weather data")
+        }
     }    
 }
-
-fn get_weather_data_for_current_hour(weather: &ApiResponse) -> Weather {
-    let now: DateTime<Utc> = Utc::now();
-    let current_hour: u32 = now.hour();
-    let mut closest_weather: Option<Weather> = None;
-    let mut min_distance = 24;
-
-    for weather in &weather.hourly {
-        let weather_hour: u32 = DateTime::<Utc>::from_timestamp(weather.dt, 0).expect("Could not parse timestamp").hour();
-        let distance = if weather_hour > current_hour {weather_hour - current_hour} else {current_hour - weather_hour};
-
-        if distance < min_distance {
-            min_distance = distance;
-            closest_weather = Some(weather.clone());
-        }
-    }
-
-    closest_weather.expect("Could not find weather data for current hour")
-}
-
-
-// For each key in cluster hashmap
-
-// convert to latlng
-
-// get the closest weather data  or if > 10 km away, fetch new data
-
-// calculate the average wind speed and direction
-
-// update the baloons in the cluster with the new data
