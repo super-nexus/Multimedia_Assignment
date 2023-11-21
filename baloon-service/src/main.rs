@@ -2,7 +2,7 @@ mod weather;
 mod baloon;
 
 use weather::model::ApiResponse;
-use baloon::model::{Baloon, Latlng, PoppedBaloon, popped_baloon};
+use baloon::model::{Baloon, Latlng, PoppedBaloon};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
@@ -25,12 +25,15 @@ async fn main() -> Result<(), reqwest::Error> {
         println!("Remove outdated weather data");
         weather::util::remove_outdated_weather(&mut weather_data);
 
-        println!("Fetching baloons and popped baloons");
-        let mut baloons: Vec<Baloon> = get_baloons_data(baloons_path).unwrap_or_else(|| Vec::new());
+        println!("Fetch and clean popped baloons");
         let mut popped_baloons: Vec<PoppedBaloon> = get_popped_baloons(popped_baloons_path).unwrap_or_else(|| Vec::new());
-
-        println!("Cleaning popped baloons");
         clean_popped_baloons(&mut popped_baloons);
+
+        println!("Fetching baloons");
+        let mut baloons_file = File::options().read(true).write(true).open(baloons_path).expect("Could not open file");
+        baloons_file.lock_exclusive().expect("Could not lock file");
+
+        let mut baloons: Vec<Baloon> = get_baloons_data(&mut baloons_file).unwrap_or_else(|| Vec::new());
 
         println!("Updating popped baloons");
         update_popped_baloons(&mut baloons, &mut popped_baloons);
@@ -42,7 +45,8 @@ async fn main() -> Result<(), reqwest::Error> {
         update_baloons(&mut clustered_baloons, &mut weather_data).await;
 
         println!("Store updated baloons");
-        store_baloons(&clustered_baloons, baloons_path).await;
+        store_baloons(&clustered_baloons, &mut baloons_file).await;
+        baloons_file.unlock().expect("Could not unlock file");
 
         println!("Store popped baloons");
         store_popped_baloons(&popped_baloons, popped_baloons_path);
@@ -51,8 +55,7 @@ async fn main() -> Result<(), reqwest::Error> {
     }
 }
 
-fn get_baloons_data(path: &str) -> Option<Vec<Baloon>> {
-    let mut file = File::open(path).ok()?;
+fn get_baloons_data(file: &mut File) -> Option<Vec<Baloon>> {
     let mut contents = String::new();
 
     file.read_to_string(&mut contents).ok()?;
@@ -80,14 +83,13 @@ async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weat
     }
 }
 
-async fn store_baloons(baloons_cluster: &HashMap<String, Vec<Baloon>>, file_path: &str) {
+async fn store_baloons(baloons_cluster: &HashMap<String, Vec<Baloon>>, file: &mut File) {
     // Map all baloons to a single vector
     let all_baloons: Vec<Baloon> = baloons_cluster.values()
         .flat_map(|baloons| baloons.iter().cloned())
         .collect();
     
     let json = serde_json::to_string(&all_baloons).expect("Could not serialize baloons");
-    let mut file = File::create(file_path).expect("Could not create file");
     file.write_all(json.as_bytes()).expect("Could not write to file");
 }
 
@@ -161,10 +163,4 @@ fn update_popped_baloons(baloons: &mut Vec<Baloon>, popped_baloons: &mut Vec<Pop
             baloons.remove(index);
         }
     }
-}
-
-fn write_popped_baloons(popped_baloons: &Vec<PoppedBaloon>, file_path: &str) {
-    let json = serde_json::to_string(&popped_baloons).expect("Could not serialize popped baloons");
-    let mut file = File::create(file_path).expect("Could not create file");
-    file.write_all(json.as_bytes()).expect("Could not write to file");
 }
