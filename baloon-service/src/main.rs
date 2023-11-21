@@ -31,7 +31,7 @@ async fn main() -> Result<(), reqwest::Error> {
         let mut clustered_baloons: HashMap<String, Vec<Baloon>> = baloon::util::cluster_baloons(baloons);
 
         println!("5. Updating baloons");
-        update_baloons(&mut clustered_baloons, &weather_data).await;
+        update_baloons(&mut clustered_baloons, &mut weather_data).await;
 
         // Pop baloons here
 
@@ -50,7 +50,7 @@ fn get_baloons_data(path: &str) -> Option<Vec<Baloon>> {
     serde_json::from_str(&contents).ok()?
 }
 
-async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weather_data: &Vec<ApiResponse>) {
+async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weather_data: &mut Vec<ApiResponse>) {
     for (key, baloons) in baloons_cluster.iter_mut() {
         let closest_weather_data = get_closest_weather_data(key, weather_data).await;
         let weather_for_current_hour = weather::util::get_weather_data_for_current_hour(&closest_weather_data);
@@ -74,11 +74,11 @@ async fn store_baloons(baloons_cluster: &HashMap<String, Vec<Baloon>>, file_path
     file.write_all(json.as_bytes()).expect("Could not write to file");
 }
 
-async fn get_closest_weather_data(latlng_key: &str, weather_data: &Vec<ApiResponse>) -> ApiResponse {
+async fn get_closest_weather_data(latlng_key: &str, weather_data: &mut Vec<ApiResponse>) -> ApiResponse {
     let baloon_latlng = Latlng::from_string(latlng_key);
     let mut current_closest_weather: Option<ApiResponse> = None;
     
-    for weather in weather_data {
+    for weather in &mut *weather_data {
         let weather_latlng = Latlng { lat: weather.lat, lng: weather.lon };
         let distance = baloon_latlng.distance(&weather_latlng);
 
@@ -95,8 +95,11 @@ async fn get_closest_weather_data(latlng_key: &str, weather_data: &Vec<ApiRespon
 
         None => {
             println!("Fetching weather data for baloon cluster at {}, {}", baloon_latlng.lat, baloon_latlng.lng);
-            weather::util::fetch_weather_data(baloon_latlng.lat, baloon_latlng.lng)
-                .await.ok().expect("Could not fetch weather data")
+            let weather = weather::util::fetch_weather_data(baloon_latlng.lat, baloon_latlng.lng)
+                .await.ok().expect("Could not fetch weather data");
+            
+            weather_data.push(weather.clone());
+            weather
         }
     }    
 }

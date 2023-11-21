@@ -60,17 +60,19 @@ pub fn move_baloon(baloon: &mut Baloon, weather: &Weather) {
 
 fn calculate_new_position(latlng: Latlng, wind_speed: f32, wind_direction: u16, time_s: f32) -> Latlng {
     let distance_km = wind_speed * time_s / 1000.0; // Convert speed to distance in kilometers
-    let bearing = wind_direction as f32;
-    let bearing_rad = bearing.to_radians();
+    let bearing_rad = (wind_direction as f32).to_radians();
+
+    let earth_radius_km = 6371.0; // Radius of the Earth in kilometers
+    let distance_rad = distance_km / earth_radius_km;
 
     let lat_rad = latlng.lat.to_radians();
     let lng_rad = latlng.lng.to_radians();
 
-    let new_lat_rad = (lat_rad.sin() * distance_km.cos() + 
-                      lat_rad.cos() * distance_km.sin() * bearing_rad.cos()).asin();
-    let new_lng_rad = lng_rad + 
-                     bearing_rad.sin().atan2(lat_rad.cos() * distance_km.sin() * bearing_rad.cos() -
-                                         lat_rad.sin() * distance_km.cos());
+    let new_lat_rad = (lat_rad.sin() * distance_rad.cos() + lat_rad.cos() * distance_rad.sin() * bearing_rad.cos()).asin();
+    let new_lng_rad = lng_rad + f32::atan2(
+        bearing_rad.sin() * distance_rad.sin() * lat_rad.cos(),
+        distance_rad.cos() - lat_rad.sin() * new_lat_rad.sin()
+    );
 
     let new_lat = new_lat_rad.to_degrees();
     let new_lng = new_lng_rad.to_degrees();
