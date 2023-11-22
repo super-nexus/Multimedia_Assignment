@@ -1,14 +1,13 @@
 mod weather;
 mod baloon;
+mod persistance;
 
 use weather::model::ApiResponse;
-use baloon::model::{Baloon, Latlng, PoppedBaloon};
+use baloon::model::{Baloon, Latlng};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
 use dotenv::dotenv;
 use rand::Rng;
-use fs2::FileExt;
+use mongodb::Client;
 
 const MAX_DISTANCE_KM: f32 = 10.0;
 
@@ -16,27 +15,22 @@ const MAX_DISTANCE_KM: f32 = 10.0;
 async fn main() -> Result<(), reqwest::Error> {
     dotenv().ok();
 
-    let baloons_path = "/Users/andrijakuzmanov/Documents/code/faks/MULTI/Multimedia_Assignment/baloons.json";
-    let popped_baloons_path = "/Users/andrijakuzmanov/Documents/code/faks/MULTI/Multimedia_Assignment/popped_baloons.json";
     let mut weather_data: Vec<ApiResponse> = Vec::new();
+    let mongo_client = persistance::mongo::get_client().await;
 
     loop {
         println!("Running loop");
         println!("Remove outdated weather data");
         weather::util::remove_outdated_weather(&mut weather_data);
 
-        println!("Fetch and clean popped baloons");
-        let mut popped_baloons: Vec<PoppedBaloon> = get_popped_baloons(popped_baloons_path).unwrap_or_else(|| Vec::new());
-        clean_popped_baloons(&mut popped_baloons);
+        println!("Fetch baloons");
+        let (mut baloons, popped_baloons) = persistance::mongo::get_baloons_and_popped_baloons(&mongo_client).await;        
 
-        println!("Fetching baloons");
-        let mut baloons_file = File::options().read(true).write(true).open(baloons_path).expect("Could not open file");
-        baloons_file.lock_exclusive().expect("Could not lock file");
-
-        let mut baloons: Vec<Baloon> = get_baloons_data(&mut baloons_file).unwrap_or_else(|| Vec::new());
+        println!("Clean popped baloons");
+        clean_popped_baloons(&mongo_client, &popped_baloons).await;
 
         println!("Updating popped baloons");
-        update_popped_baloons(&mut baloons, &mut popped_baloons);
+        update_popped_baloons(&mongo_client, &mut baloons).await;
 
         println!("Clustering baloons");
         let mut clustered_baloons: HashMap<String, Vec<Baloon>> = baloon::util::cluster_baloons(baloons);
@@ -45,29 +39,10 @@ async fn main() -> Result<(), reqwest::Error> {
         update_baloons(&mut clustered_baloons, &mut weather_data).await;
 
         println!("Store updated baloons");
-        store_baloons(&clustered_baloons, &mut baloons_file).await;
-        baloons_file.unlock().expect("Could not unlock file");
-
-        println!("Store popped baloons");
-        store_popped_baloons(&popped_baloons, popped_baloons_path);
+        store_baloons(&mongo_client, &clustered_baloons).await;
 
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
-}
-
-fn get_baloons_data(file: &mut File) -> Option<Vec<Baloon>> {
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents).ok()?;
-    serde_json::from_str(&contents).ok()?
-}
-
-fn get_popped_baloons(path: &str) -> Option<Vec<PoppedBaloon>> {
-    let mut file = File::open(path).ok()?;
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents).ok()?;
-    serde_json::from_str(&contents).ok()?
 }
 
 async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weather_data: &mut Vec<ApiResponse>) {
@@ -83,20 +58,13 @@ async fn update_baloons(baloons_cluster: &mut HashMap<String, Vec<Baloon>>, weat
     }
 }
 
-async fn store_baloons(baloons_cluster: &HashMap<String, Vec<Baloon>>, file: &mut File) {
+async fn store_baloons(client: &Client, baloons_cluster: &HashMap<String, Vec<Baloon>>) {
     // Map all baloons to a single vector
     let all_baloons: Vec<Baloon> = baloons_cluster.values()
         .flat_map(|baloons| baloons.iter().cloned())
         .collect();
     
-    let json = serde_json::to_string(&all_baloons).expect("Could not serialize baloons");
-    file.write_all(json.as_bytes()).expect("Could not write to file");
-}
-
-fn store_popped_baloons(popped_baloons: &Vec<PoppedBaloon>, popped_baloons_path: &str) {
-    let json: String = serde_json::to_string(&popped_baloons).expect("Could not serialize popped baloons");
-    let mut file = File::create(popped_baloons_path).expect("Could not create file");
-    file.write_all(json.as_bytes()).expect("Could not write to file");
+    persistance::mongo::update_baloons(client, &all_baloons).await;
 }
 
 async fn get_closest_weather_data(latlng_key: &str, weather_data: &mut Vec<ApiResponse>) -> ApiResponse {
@@ -132,35 +100,35 @@ async fn get_closest_weather_data(latlng_key: &str, weather_data: &mut Vec<ApiRe
 }
 
 // Remove baloons that are older than 30 mins
-fn clean_popped_baloons(popped_baloons: &mut Vec<PoppedBaloon>) {
-    popped_baloons.retain(|baloon| {
-        let current_time = chrono::offset::Utc::now().timestamp();
+async fn clean_popped_baloons(client: &Client, popped_baloons: &Vec<Baloon>) {
+    let current_time = chrono::offset::Utc::now().timestamp();
+    let outdated_baloons: Vec<Baloon> = popped_baloons.iter().filter(|baloon| {
         let baloon_time_in_air_mins = (current_time - baloon.popped_at) / 60;
+        baloon_time_in_air_mins > 30
+    }).cloned().collect();
 
-        baloon_time_in_air_mins < 30
-    });
+    persistance::mongo::delete_baloons(client, &outdated_baloons).await;
 }
 
-fn update_popped_baloons(baloons: &mut Vec<Baloon>, popped_baloons: &mut Vec<PoppedBaloon>) {
+async fn update_popped_baloons(client: &Client, baloons: &mut Vec<Baloon>) {
     let current_time = chrono::offset::Utc::now().timestamp();
     let max_baloon_time_in_air_mins = 15;
-    let mut popped_indices: Vec<usize> = Vec::new();
 
-    for (index, baloon) in baloons.iter().enumerate() {
+    let mut new_popped_baloons: Vec<Baloon> = baloons.iter().filter(|baloon| {
         let baloon_time_in_air_mins = (current_time - baloon.timestamp) / 60;
         let rand_number = rand::thread_rng().gen_range(0..max_baloon_time_in_air_mins);
-        
-        if baloon_time_in_air_mins > rand_number {
-            println!("Baloon popped");
-            popped_indices.push(index);
-        }
+
+        baloon_time_in_air_mins > rand_number
+    }).cloned().collect();
+
+    for baloon in &mut new_popped_baloons {
+        println!("Baloon popped at {}, {}", baloon.lat, baloon.lng);
+        baloon.popped = true;
+        baloon.popped_at = current_time;
     }
 
-    for &index in popped_indices.iter().rev() {
-        if let Some(baloon) = baloons.get(index) {
-            let popped_baloon = PoppedBaloon::from_baloon(baloon.clone());
-            popped_baloons.push(popped_baloon);
-            baloons.remove(index);
-        }
-    }
+    persistance::mongo::update_baloons(client, &new_popped_baloons).await;
+
+    // Delete the popped baloons from baloons
+    baloons.retain(|baloon| !new_popped_baloons.contains(baloon));
 }
