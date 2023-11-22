@@ -19,26 +19,26 @@ async fn main() -> Result<(), reqwest::Error> {
     let mongo_client = persistance::mongo::get_client().await;
 
     loop {
-        println!("Running loop");
-        println!("Remove outdated weather data");
+        println!("Running loop ********************************************");
+        println!("Remove outdated weather data ----------------------------");
         weather::util::remove_outdated_weather(&mut weather_data);
 
-        println!("Fetch baloons");
+        println!("Fetch baloons -------------------------------------------");
         let (mut baloons, popped_baloons) = persistance::mongo::get_baloons_and_popped_baloons(&mongo_client).await;        
 
-        println!("Clean popped baloons");
+        println!("Clean popped baloons -----------------------------------");
         clean_popped_baloons(&mongo_client, &popped_baloons).await;
 
-        println!("Updating popped baloons");
+        println!("Updating popped baloons -------------------------------");
         update_popped_baloons(&mongo_client, &mut baloons).await;
 
-        println!("Clustering baloons");
+        println!("Clustering baloons ------------------------------------");
         let mut clustered_baloons: HashMap<String, Vec<Baloon>> = baloon::util::cluster_baloons(baloons);
 
-        println!("Updating baloons");
+        println!("Updating baloons --------------------------------------");
         update_baloons(&mut clustered_baloons, &mut weather_data).await;
 
-        println!("Store updated baloons");
+        println!("Store updated baloons ---------------------------------");
         store_baloons(&mongo_client, &clustered_baloons).await;
 
         std::thread::sleep(std::time::Duration::from_secs(10));
@@ -122,13 +122,15 @@ async fn update_popped_baloons(client: &Client, baloons: &mut Vec<Baloon>) {
     }).cloned().collect();
 
     for baloon in &mut new_popped_baloons {
-        println!("Baloon popped at {}, {}", baloon.lat, baloon.lng);
         baloon.popped = true;
         baloon.popped_at = current_time;
     }
 
+    println!("Popped baloons: {:?}", new_popped_baloons);
     persistance::mongo::update_baloons(client, &new_popped_baloons).await;
 
     // Delete the popped baloons from baloons
-    baloons.retain(|baloon| !new_popped_baloons.contains(baloon));
+    baloons.retain(|baloon| {
+        !new_popped_baloons.iter().any(|popped_baloon| popped_baloon.id == baloon.id)
+    });
 }
