@@ -1,34 +1,73 @@
 const express = require("express");
 const fs  = require("fs");
+const { MongoClient } = require('mongodb');
+const { Long } = require('bson');
 var axios = require('axios');
+
 
 const app = express();
 const port = 3004
 
+const mongo_url = "mongodb://localhost:27017";
+const client = new MongoClient(mongo_url);
+
+async function connectDB() {
+  try {
+    await client.connect();
+    console.log("Connected correctly to server");
+  } catch (err) {
+    console.log(err.stack);
+  }
+}
+
+const database = client.db("baloon-service");
+const collection = database.collection("baloons");
+
 // Middleware to parse JSON bodies
 app.use(express.json());
-
-var get_weather_request = {
-  method: 'get',
-  url: 'https://api.openweathermap.org/data/3.0/onecall?lat=4.48&lon=52.15&exclude=hourly,daily&appid=dbde08b4797828949a4cf02ba7c369fe',
-  headers: { }
-};
 
 
 /*
   should return [{id, lat, lng, owner, message}]
 */
-app.get("/baloons", (req, res) => {
-
+app.get("/baloons", async (req, res) => {
+  try {
+    const result = await collection.find({ popped: false }).toArray();
+    res.status(200).send(result);
+  } catch (err) {
+    res.status(500).send();
+    console.log(err.stack);
+  }
 });
 
 /*
-  receives {lat, lng, name, message}
+  receives {lat, lng, name(owner), message}
 */
-app.post('/send-baloon', (req, res) => {
+app.post('/baloons', async (req, res) => {
   let data = req.body;
+  console.log("Received: ", data )
+
+  let baloon = {
+    lat: data.lat,
+    lng: data.lng,
+    owner: data.name,
+    message: data.message,
+    timestamp: Long.fromNumber(Date.now()),
+    popped: false,
+    popped_at: Long.fromNumber(0)
+  }
+
+  try{
+    const result = await collection.insertOne(baloon);
+    res.status(200).send();
+  } catch (err) {
+    res.status(500).send();
+    console.log(err.stack);
+  }
 });
 
+
+connectDB().catch(console.error);
 
 app.listen(port, () => {
   console.log(`App listening port: ${port}`)
