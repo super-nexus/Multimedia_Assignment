@@ -115,7 +115,7 @@ async fn update_popped_baloons(client: &Client, baloons: &mut Vec<Baloon>) {
     let max_baloon_time_in_air_mins = 15;
 
     let mut new_popped_baloons: Vec<Baloon> = baloons.iter().filter(|baloon| {
-        let baloon_time_in_air_mins = (current_time - baloon.timestamp) / 60;
+        let baloon_time_in_air_mins = i64::abs(current_time - baloon.timestamp) / 60;
         let rand_number = rand::thread_rng().gen_range(0..max_baloon_time_in_air_mins);
 
         baloon_time_in_air_mins > rand_number
