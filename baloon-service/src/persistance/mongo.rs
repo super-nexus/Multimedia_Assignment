@@ -1,5 +1,5 @@
 use crate::baloon::model::Baloon;
-use mongodb::{Client, options::ClientOptions, Collection, bson::{self, Document}, bson::doc, bson::oid::ObjectId, Cursor};
+use mongodb::{Client, options::ClientOptions, Collection, bson::{self, Document}, bson::doc};
 use futures::stream::TryStreamExt;
 
 pub async fn get_client() -> Client {
