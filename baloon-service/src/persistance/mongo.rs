@@ -3,7 +3,8 @@ use mongodb::{Client, options::ClientOptions, Collection, bson::{self, Document}
 use futures::stream::TryStreamExt;
 
 pub async fn get_client() -> Client {
-    let mut client_options = ClientOptions::parse("mongodb://localhost:27017").await.expect("Unable to connect to MongoDB");
+    let mongo_url = std::env::var("MONGO_URL").expect("MONGO_URL not set");
+    let mut client_options = ClientOptions::parse(mongo_url).await.expect("Unable to connect to MongoDB");
     client_options.app_name = Some("baloon-service".to_string());
     Client::with_options(client_options).expect("Failed to create client")
 }
