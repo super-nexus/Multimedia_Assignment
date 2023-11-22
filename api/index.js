@@ -66,6 +66,15 @@ app.post('/baloons', async (req, res) => {
   }
 });
 
+app.get('/popped-baloons', async (req, res) => {
+  try {
+    const result = await collection.find({ popped: true }).toArray();
+    res.status(200).send(result);
+  } catch (err) {
+    res.status(500).send();
+    console.log(err.stack);
+  }
+});
 
 connectDB().catch(console.error);
 
