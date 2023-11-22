@@ -3,12 +3,13 @@ const fs  = require("fs");
 const { MongoClient } = require('mongodb');
 const { Long } = require('bson');
 var axios = require('axios');
+require('dotenv').config();
 
 
 const app = express();
-const port = 3004
+const port = process.env.PORT || 3004;
 
-const mongo_url = "mongodb://localhost:27017";
+const mongo_url = process.env.MONGO_URL || "mongodb://localhost:27017";
 const client = new MongoClient(mongo_url);
 
 async function connectDB() {

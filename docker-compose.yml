@@ -1,8 +1,36 @@
 services:
   mongodb:
     image: mongo
+    container_name: baloon-mongo
     restart: always
     ports:
       - 27017:27017
     volumes:
       - ./data/db:/data/db
+    networks:
+      - baloon-network
+
+  api:
+    image: baloon-api
+    restart: always
+    ports:
+      - 3000:3000
+    environment:
+      - MONGO_URL=mongodb://baloon-mongo:27017
+      - PORT=3000
+    networks:
+      - baloon-network
+
+  baloon-service:
+    image: baloon-service
+    restart: always
+    environment:
+      - MONGO_URL=mongodb://baloon-mongo:27017/baloon
+      - OPEN_WEATHER_MAP_API_KEY=$(OPEN_WEATHER_MAP_API_KEY)
+    networks:
+      - baloon-network
+
+networks:
+  baloon-network:
+    driver: bridge
+    
