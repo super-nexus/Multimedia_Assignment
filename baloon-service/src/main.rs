@@ -10,6 +10,7 @@ use rand::Rng;
 use mongodb::Client;
 
 const MAX_DISTANCE_KM: f32 = 10.0;
+const REFRESH_TIME_SECS: u64 = 10;
 
 #[tokio::main]
 async fn main() -> Result<(), reqwest::Error> {
@@ -41,7 +42,7 @@ async fn main() -> Result<(), reqwest::Error> {
         println!("Store updated baloons ---------------------------------");
         store_baloons(&mongo_client, &clustered_baloons).await;
 
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        std::thread::sleep(std::time::Duration::from_secs(REFRESH_TIME_SECS));
     }
 }
 
@@ -101,24 +102,24 @@ async fn get_closest_weather_data(latlng_key: &str, weather_data: &mut Vec<ApiRe
 
 // Remove baloons that are older than 30 mins
 async fn clean_popped_baloons(client: &Client, popped_baloons: &Vec<Baloon>) {
-    let current_time = chrono::offset::Utc::now().timestamp();
+    let current_time = chrono::offset::Utc::now().timestamp_millis();
     let outdated_baloons: Vec<Baloon> = popped_baloons.iter().filter(|baloon| {
-        let baloon_time_in_air_mins = (current_time - baloon.popped_at) / 60;
+        let baloon_time_in_air_mins = i64::abs(current_time - baloon.popped_at) / 60000; // 60000 ms = 1 min
         baloon_time_in_air_mins > 30
     }).cloned().collect();
 
+    println!("Outdated baloons: {:?}", outdated_baloons);
     persistance::mongo::delete_baloons(client, &outdated_baloons).await;
 }
 
 async fn update_popped_baloons(client: &Client, baloons: &mut Vec<Baloon>) {
-    let current_time = chrono::offset::Utc::now().timestamp();
+    let current_time = chrono::offset::Utc::now().timestamp_millis();
     let max_baloon_time_in_air_mins = 15;
+    let baloon_pop_prob_per_iter = REFRESH_TIME_SECS as f32 / (max_baloon_time_in_air_mins * 60) as f32;
 
     let mut new_popped_baloons: Vec<Baloon> = baloons.iter().filter(|baloon| {
-        let baloon_time_in_air_mins = i64::abs(current_time - baloon.timestamp) / 60;
-        let rand_number = rand::thread_rng().gen_range(0..max_baloon_time_in_air_mins);
-
-        baloon_time_in_air_mins > rand_number
+        let baloon_time_in_air_mins = i64::abs(current_time - baloon.timestamp) / 60000; // 60000 ms = 1 min
+        baloon_time_in_air_mins > max_baloon_time_in_air_mins || random_bool_with_prob(baloon_pop_prob_per_iter)
     }).cloned().collect();
 
     for baloon in &mut new_popped_baloons {
@@ -133,4 +134,10 @@ async fn update_popped_baloons(client: &Client, baloons: &mut Vec<Baloon>) {
     baloons.retain(|baloon| {
         !new_popped_baloons.iter().any(|popped_baloon| popped_baloon.id == baloon.id)
     });
+}
+
+fn random_bool_with_prob(prob: f32) -> bool {
+    let mut rng = rand::thread_rng();
+    let random_number: f32 = rng.gen();
+    random_number < prob
 }
