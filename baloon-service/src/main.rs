@@ -1,6 +1,7 @@
 mod weather;
 mod baloon;
 mod persistance;
+mod conf;
 
 use weather::model::ApiResponse;
 use baloon::model::{Baloon, Latlng};
@@ -8,13 +9,15 @@ use std::collections::HashMap;
 use dotenv::dotenv;
 use rand::Rng;
 use mongodb::Client;
-
-const MAX_DISTANCE_KM: f32 = 10.0;
-const REFRESH_TIME_SECS: u64 = 10;
+use conf::{CONFIG, Config};
+use once_cell::sync::Lazy;
 
 #[tokio::main]
 async fn main() -> Result<(), reqwest::Error> {
     dotenv().ok();
+
+    Lazy::force(&CONFIG);
+    println!("Config: {:?}", CONFIG); 
 
     let mut weather_data: Vec<ApiResponse> = Vec::new();
     let mongo_client = persistance::mongo::get_client().await;
@@ -42,7 +45,7 @@ async fn main() -> Result<(), reqwest::Error> {
         println!("Store updated baloons ---------------------------------");
         store_baloons(&mongo_client, &clustered_baloons).await;
 
-        std::thread::sleep(std::time::Duration::from_secs(REFRESH_TIME_SECS));
+        std::thread::sleep(std::time::Duration::from_secs(CONFIG.refresh_time_secs));
     }
 }
 
@@ -76,7 +79,7 @@ async fn get_closest_weather_data(latlng_key: &str, weather_data: &mut Vec<ApiRe
         let weather_latlng = Latlng { lat: weather.lat, lng: weather.lon };
         let distance = baloon_latlng.distance(&weather_latlng);
 
-        if distance < MAX_DISTANCE_KM {
+        if distance < CONFIG.max_weather_distance_km as f32 {
             current_closest_weather = Some(weather.clone());
         }
     }
@@ -115,7 +118,7 @@ async fn clean_popped_baloons(client: &Client, popped_baloons: &Vec<Baloon>) {
 async fn update_popped_baloons(client: &Client, baloons: &mut Vec<Baloon>) {
     let current_time = chrono::offset::Utc::now().timestamp_millis();
     let max_baloon_time_in_air_mins = 15;
-    let baloon_pop_prob_per_iter = REFRESH_TIME_SECS as f32 / (max_baloon_time_in_air_mins * 60) as f32;
+    let baloon_pop_prob_per_iter = CONFIG.refresh_time_secs as f32 / (max_baloon_time_in_air_mins * 60) as f32;
 
     let mut new_popped_baloons: Vec<Baloon> = baloons.iter().filter(|baloon| {
         let baloon_time_in_air_mins = i64::abs(current_time - baloon.timestamp) / 60000; // 60000 ms = 1 min

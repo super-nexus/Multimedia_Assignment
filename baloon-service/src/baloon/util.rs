@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use crate::weather::model::Weather;
 use crate::baloon::model::{Baloon, Latlng};
 use rand::Rng;
-
-const MAX_DISTANCE_KM: f32 = 10.0; // Define a maximum distance for clustering in kilometers
+use crate::conf::CONFIG;
 
 fn create_latlng_key(lat: f32, lng: f32) -> String {
     format!("{:.5},{:.5}", lat, lng)
@@ -15,7 +14,7 @@ pub fn cluster_baloons(baloons: Vec<Baloon>) -> HashMap<String, Vec<Baloon>> {
 
     for baloon in baloons {
         let mut closest_cluster_key: Option<String> = None;
-        let mut min_distance = MAX_DISTANCE_KM;
+        let mut min_distance = CONFIG.max_cluster_distance_km;
         let baloon_latlng = Latlng { lat: baloon.lat, lng: baloon.lng };
 
         for (key, _) in clusters.iter() {
