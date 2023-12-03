@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use dotenv::dotenv;
 use rand::Rng;
 use mongodb::Client;
-use conf::{CONFIG, Config};
+use conf::CONFIG;
 use once_cell::sync::Lazy;
 
 #[tokio::main]
