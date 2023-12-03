@@ -1,10 +1,12 @@
 const express = require("express");
+const cors = require("cors");
 const { MongoClient } = require('mongodb');
 const { Long } = require('bson');
 require('dotenv').config();
 
 
 const app = express();
+app.use(cors());
 const port = process.env.PORT || 3000;
 
 const mongo_url = process.env.MONGO_URL || "mongodb://localhost:27017";
@@ -43,6 +45,7 @@ app.get("/baloons", async (req, res) => {
   receives {lat, lng, name(owner), message}
 */
 app.post('/baloons', async (req, res) => {
+
   let data = req.body;
   console.log("Received: ", data )
 

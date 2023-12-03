@@ -15,16 +15,16 @@
 
         
         <div id="start-screen" class="tabcontent">
-            <form action="#" method="post" onsubmit="sendballoon(event)">
+            <form id="myForm">
                 <div class="form-group">
                     <label for="nameInput">Your name</label>
-                    <input type="text" id="name" name="name">
+                    <input type="text" id="name" name="name" required>
                 </div>
                 <div class="form-group">
                     <label for="messageArea">Your message for balloons</label>
-                    <textarea id="message" name="message" rows="4"></textarea>
+                    <textarea id="message" name="message" rows="4" ></textarea>
                 </div>
-                <input id="submit-balloon-btn" type="submit" value="Submit">
+                <input id="submit-balloon" type="submit" value="Submit">
             </form>
         </div>
 
