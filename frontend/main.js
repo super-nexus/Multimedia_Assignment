@@ -1,11 +1,10 @@
-window.onload = function() {
+window.onload = function () {
   console.log("Window loaded");
 };
 
 let map = {};
 let balloons = {};
 let fetchInterval = 10;// fetch balloons every 10 seconds
-let markers = []; //should be deleted later
 
 async function initMap() {
 
@@ -16,96 +15,20 @@ async function initMap() {
   });
 
 
+  fetchBalloons()
 
-
-  // setInterval(fetchBalloons, fetchInterval * 1000);
-  //when backend is done code below should be deleted and code above should be uncommented
-  // let baloonData = await getData('http://localhost:3000/baloons')
-  
-  
-  if(false){
-    console.log('Converting baloon data to markers')
-  // Create baloon markers
-  for (let i = 0; i < baloonData.length; i++) {
-    console.log(baloonData[0])
-    if (baloonData[i].lat!=null){
-      const pos = {
-        lat: baloonData[i].lat,
-        lng: baloonData[i].lng,
-      };
-      const marker = new google.maps.Marker({
-        position: pos,
-        map,
-        icon: {
-          url: 'balloon.png',
-          scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
-        },
-      });
-  
-      markers.push(marker);
-    }
-   
-  }
-  }else{
-    for (let i = 0; i < 10; i++) {
-      const pos = {
-        lat: 52.160114 + Math.random() * 0.02,
-        lng: 4.497010 + Math.random() * 0.02,
-      };
-      const marker = new google.maps.Marker({
-        position: pos,
-        map,
-        icon: {
-          url: 'balloon.png',
-          scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
-        },
-      });
-  
-      markers.push(marker);
-    }
-  }
-
-
-  // Simulate wind movement for each marker
-  markers.forEach(marker => {
-    console.log(marker)
-    const endPos = {
-      lat: marker.getPosition().lat() + Math.random() * 0.02 - 0.01,
-      lng: marker.getPosition().lng() + Math.random() * 0.02 - 0.01,
-    };
-    animateMarker(marker, marker.getPosition().toJSON(), endPos, 10000);
-  });
-  
+  setInterval(fetchBalloons, fetchInterval * 1000);
 
 }
-
-
-
-// Example POST method implementation:
-async function getData(url = "") {
-  // Default options are marked with *
-  const response = await fetch(url, {
-    method: "GET", 
-    mode: "cors", 
-    cache: "no-cache",
-    credentials: "same-origin", 
-    redirect: "follow", // manual, *follow, error
-    referrerPolicy: "no-referrer", 
-  });
-  return response.json(); 
-}
-
-
-
 
 // Function to animate marker (same as your code)
-function animateMarker(marker, startPos, endPos, duration) {
+function animateMarker(marker, startPos, duration) {
   let startTime = null;
   function animate(time) {
     if (!startTime) startTime = time;
     const progress = (time - startTime) / duration;
-    const lat = startPos.lat + (endPos.lat - startPos.lat) * progress;
-    const lng = startPos.lng + (endPos.lng - startPos.lng) * progress;
+    const lat = startPos.lat
+    const lng = startPos.lng
 
     marker.setPosition(new google.maps.LatLng(lat, lng));
 
@@ -116,37 +39,41 @@ function animateMarker(marker, startPos, endPos, duration) {
   requestAnimationFrame(animate);
 }
 
-
-
-
 function fetchBalloons() {
-  fetch('/balloons')
-  .then(response => response.json())
-  .then(data => {
-    data.forEach(balloon => {
-      //check if marker already exists in array of markers
-      if(balloons[balloon.id]){
-        let marker = balloons[balloon.id].marker;
-        animateMarker(marker, marker.getPosition().toJSON(), balloon, 10000);
-      }else{
-        const marker = new google.maps.Marker({
-          position: { lat: balloon.lat, lng: balloon.lng },
-          map,
-          icon: {
-            url: 'balloon.png',
-            scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
-          },
-        });
-        balloons[balloon.id] = {}
-        balloons[balloon.id].marker = marker;
-        balloons[balloon.id].message = balloon.message;
-        balloons[balloon.id].owner = balloon.owner;
-      }
+  var requestOptions = {
+    method: 'GET',
+    redirect: 'follow'
+  };
+  fetch("http://localhost:3000/baloons", requestOptions)
+    .then(response => response.json())
+    .then(data => {
+      data.forEach(balloon => {
+        //check if marker already exists in array of markers and has a valid coordinates
+        if (balloon.lat != null) {
+          if (balloons[balloon._id]) {
+            let marker = balloons[balloon._id].marker;
+            animateMarker(marker, marker.getPosition().toJSON(), 10000);
+          } else {
+            const marker = new google.maps.Marker({
+              position: {
+                lat: balloon.lat,
+                lng: balloon.lng,
+              },
+              map,
+              icon: {
+                url: './baloon.png',
+                scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
+              },
+            });
+            balloons[balloon._id] = {};
+            balloons[balloon._id].marker = marker;
+            balloons[balloon._id].message = balloon.message;
+            balloons[balloon._id].owner = balloon.owner;
+          }
+        }
+      });
     });
-  });
 }
-
-
 
 function getUserGeolocation() {
   return new Promise((resolve, reject) => {
@@ -158,16 +85,16 @@ function getUserGeolocation() {
   });
 }
 
-function showElement(querySelector){
+function showElement(querySelector) {
   document.querySelector(querySelector).style.display = "block";
 }
 
-function hideElement(querySelector){
+function hideElement(querySelector) {
   document.querySelector(querySelector).style.display = "none";
 }
 
 
-function openModal(message){
+function openModal(message) {
   let modal = document.getElementById("send-balloon-modal");
   modal.style.display = "block";
 
@@ -175,34 +102,34 @@ function openModal(message){
   modalMessage.innerHTML = message;
 
   var span = document.getElementsByClassName("close-button")[0];
-  span.onclick = function() {
-      modal.style.display = "none";
+  span.onclick = function () {
+    modal.style.display = "none";
   }
 
-  window.onclick = function(event) {
+  window.onclick = function (event) {
     if (event.target === modal) {
-        modal.style.display = "none";
+      modal.style.display = "none";
     }
   }
 }
 
 
-async function postData(url = "", data ) {
+async function postData(url = "", data) {
 
   const response = await fetch(url, {
-    method: "POST", 
-    mode: "cors", 
-    cache: "no-cache", 
-    credentials: "same-origin", 
+    method: "POST",
+    mode: "cors",
+    cache: "no-cache",
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
-    
+
     },
-    redirect: "follow", 
-    referrerPolicy: "no-referrer", 
-    body: data, 
+    redirect: "follow",
+    referrerPolicy: "no-referrer",
+    body: data,
   });
-  return response; 
+  return response;
 }
 
 
@@ -218,22 +145,22 @@ document.getElementById('myForm').addEventListener('submit', sendballoon);
 //   });
 // }
 
-async function sendballoon(e){
+async function sendballoon(e) {
   e.preventDefault();
 
   let userGeolocation = await getUserGeolocation();
   console.log(userGeolocation)
 
-  console.log(document.querySelector("#name").value,userGeolocation.coords.longitude)
+  console.log(document.querySelector("#name").value, userGeolocation.coords.longitude)
 
-  var balloonInfo=  JSON.stringify({
+  var balloonInfo = JSON.stringify({
     lat: userGeolocation.coords.latitude,
     lng: userGeolocation.coords.longitude,
     name: document.querySelector("#name").value,
     message: document.querySelector("#message").value
   })
-  postData("http://localhost:3000/baloons",  balloonInfo ).then((data) => {
-    console.log(data); 
+  postData("http://localhost:3000/baloons", balloonInfo).then((data) => {
+    console.log(data);
   });
 
   document.getElementById('name').value = '';
