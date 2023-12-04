@@ -61,9 +61,9 @@ app.post('/baloons', async (req, res) => {
 
   try{
     const result = await collection.insertOne(baloon);
-    res.status(200).send();
+    res.status(200).send(`Baloon ${data.name} saved`);
   } catch (err) {
-    res.status(500).send();
+    res.status(500).send(err);
     console.log(err.stack);
   }
 });

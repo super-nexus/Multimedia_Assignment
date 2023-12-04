@@ -8,6 +8,8 @@ let fetchInterval = 10;// fetch balloons every 10 seconds
 let markers = []; //should be deleted later
 
 async function initMap() {
+
+  console.log('Initialising Map')
   map = new google.maps.Map(document.getElementById("map"), {
     center: { lat: 52.160114, lng: 4.497010 },
     zoom: 13,
@@ -18,34 +20,83 @@ async function initMap() {
 
   // setInterval(fetchBalloons, fetchInterval * 1000);
   //when backend is done code below should be deleted and code above should be uncommented
-
-  // Create markers
-  for (let i = 0; i < 10; i++) {
-    const pos = {
-      lat: 52.160114 + Math.random() * 0.02,
-      lng: 4.497010 + Math.random() * 0.02,
-    };
-    const marker = new google.maps.Marker({
-      position: pos,
-      map,
-      icon: {
-        url: 'balloon.png',
-        scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
-      },
-    });
-
-    markers.push(marker);
+  // let baloonData = await getData('http://localhost:3000/baloons')
+  
+  
+  if(false){
+    console.log('Converting baloon data to markers')
+  // Create baloon markers
+  for (let i = 0; i < baloonData.length; i++) {
+    console.log(baloonData[0])
+    if (baloonData[i].lat!=null){
+      const pos = {
+        lat: baloonData[i].lat,
+        lng: baloonData[i].lng,
+      };
+      const marker = new google.maps.Marker({
+        position: pos,
+        map,
+        icon: {
+          url: 'balloon.png',
+          scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
+        },
+      });
+  
+      markers.push(marker);
+    }
+   
   }
+  }else{
+    for (let i = 0; i < 10; i++) {
+      const pos = {
+        lat: 52.160114 + Math.random() * 0.02,
+        lng: 4.497010 + Math.random() * 0.02,
+      };
+      const marker = new google.maps.Marker({
+        position: pos,
+        map,
+        icon: {
+          url: 'balloon.png',
+          scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
+        },
+      });
+  
+      markers.push(marker);
+    }
+  }
+
 
   // Simulate wind movement for each marker
   markers.forEach(marker => {
+    console.log(marker)
     const endPos = {
       lat: marker.getPosition().lat() + Math.random() * 0.02 - 0.01,
       lng: marker.getPosition().lng() + Math.random() * 0.02 - 0.01,
     };
     animateMarker(marker, marker.getPosition().toJSON(), endPos, 10000);
   });
+  
+
 }
+
+
+
+// Example POST method implementation:
+async function getData(url = "") {
+  // Default options are marked with *
+  const response = await fetch(url, {
+    method: "GET", 
+    mode: "cors", 
+    cache: "no-cache",
+    credentials: "same-origin", 
+    redirect: "follow", // manual, *follow, error
+    referrerPolicy: "no-referrer", 
+  });
+  return response.json(); 
+}
+
+
+
 
 // Function to animate marker (same as your code)
 function animateMarker(marker, startPos, endPos, duration) {
@@ -135,23 +186,23 @@ function openModal(message){
   }
 }
 
-// Example POST method implementation:
+
 async function postData(url = "", data ) {
-  // Default options are marked with *
+
   const response = await fetch(url, {
-    method: "POST", // *GET, POST, PUT, DELETE, etc.
-    mode: "cors", // no-cors, *cors, same-origin
-    cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-    credentials: "same-origin", // include, *same-origin, omit
+    method: "POST", 
+    mode: "cors", 
+    cache: "no-cache", 
+    credentials: "same-origin", 
     headers: {
       "Content-Type": "application/json",
-      // 'Content-Type': 'application/x-www-form-urlencoded',
+    
     },
-    redirect: "follow", // manual, *follow, error
-    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-    body: data, // body data type must match "Content-Type" header
+    redirect: "follow", 
+    referrerPolicy: "no-referrer", 
+    body: data, 
   });
-  return response.json(); // parses JSON response into native JavaScript objects
+  return response; 
 }
 
 
@@ -159,16 +210,13 @@ async function postData(url = "", data ) {
 
 document.getElementById('myForm').addEventListener('submit', sendballoon);
 
-async function handleSubmit(event) {
-  event.preventDefault();
+// async function handleSubmit(event) {
+//   event.preventDefault();
 
-  // const formData = new FormData(event.target);
-  // const url = 'http://localhost:3000/baloons'; // Replace with your backend URL
-
-  postData("http://localhost:3000/baloons", { answer: 42 }).then((data) => {
-    console.log(data); // JSON data parsed by `data.json()` call
-  });
-}
+//   postData("http://localhost:3000/baloons", { answer: 42 }).then((data) => {
+//     console.log(data); 
+//   });
+// }
 
 async function sendballoon(e){
   e.preventDefault();
@@ -185,7 +233,7 @@ async function sendballoon(e){
     message: document.querySelector("#message").value
   })
   postData("http://localhost:3000/baloons",  balloonInfo ).then((data) => {
-    console.log(data); // JSON data parsed by `data.json()` call
+    console.log(data); 
   });
 
   document.getElementById('name').value = '';
