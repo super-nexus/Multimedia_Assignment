@@ -15,9 +15,28 @@ async function initMap() {
   });
 
 
+  searchBalloon()
   fetchBalloons()
 
   setInterval(fetchBalloons, fetchInterval * 1000);
+
+}
+
+async function searchBalloon(){
+
+  let userGeoLocation = await getUserGeolocation()
+  var requestOptions = {
+    method: 'GET',
+    redirect: 'follow'
+  };
+  
+  fetch(`http://localhost:3000/popped-baloons?lat=52.1684517&lng=4.457985`, requestOptions)
+    .then(response => response.json())
+    .then(data=>{
+      data.forEach(balloon=>{
+        console.log(balloon)
+      })
+    })
 
 }
 

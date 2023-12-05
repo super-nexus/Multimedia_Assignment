@@ -71,7 +71,26 @@ app.post('/baloons', async (req, res) => {
 app.get('/popped-baloons', async (req, res) => {
   try {
     const result = await collection.find({ popped: true }).toArray();
-    res.status(200).send(result);
+
+    let radius = 0.2; // This is for defining a radius parameter to check if the user close enough
+    let poppedArray = [];
+
+    let userCoordinates = {
+      lat: req.query.lat,
+      lng: req.query.lng
+    }
+    result.forEach(balloon=>{
+      if (balloon.lat-radius<userCoordinates.lat & userCoordinates.lat<balloon.lat+radius & balloon.lng-radius<userCoordinates.lng & userCoordinates.lng<balloon.lng+radius){
+        poppedArray.push(balloon)
+      }
+    })
+   
+    if(poppedArray.length>0){
+      res.status(200).send(poppedArray);
+    }else{
+      res.status(200).send('No balloon popped');
+    }
+ 
   } catch (err) {
     res.status(500).send();
     console.log(err.stack);
