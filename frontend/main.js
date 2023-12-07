@@ -101,7 +101,7 @@ function popBaloon(balloon){
     balloons[balloon._id].popped = true;
     balloons[balloon._id].showed = true;
 
-    openModal(balloons[balloon._id].message);
+    openModal("Balloon from user " +balloon.owner + " popped with a message: "+ balloons[balloon._id].message);
 
     return;
   }else if(!balloons[balloon._id].showed){
@@ -112,7 +112,7 @@ function popBaloon(balloon){
     balloons[balloon._id].popped = true;
     balloons[balloon._id].showed = true;
     
-    openModal(balloons[balloon._id].message);
+    openModal("Balloon from user " +balloon.owner + " popped with a message: "+ balloons[balloon._id].message);
   }
 
 }
