@@ -5,7 +5,7 @@ window.onload = function () {
 let map = {};
 let balloons = {};
 let fetchInterval = 5;// fetch balloons every 10 seconds
-let userGeoLocation = {};
+let userGeolocation = {};
 
 async function initMap() {
 
@@ -16,7 +16,7 @@ async function initMap() {
   });
 
 
-  userGeoLocation = await getUserGeolocation();
+  userGeolocation = await getUserGeolocation();
   
   searchBalloon()
   fetchBalloons()
@@ -34,8 +34,8 @@ async function searchBalloon(){
     redirect: 'follow'
   };
 
-  let lat = userGeoLocation.coords.latitude;
-  let lng = userGeoLocation.coords.longitude;
+  let lat = userGeolocation.coords.latitude;
+  let lng = userGeolocation.coords.longitude;
   
   fetch(`http://localhost:3000/popped-baloons?lat=${lat}&lng=${lng}`, requestOptions)
     .then(response => {
@@ -99,17 +99,22 @@ function popBaloon(balloon){
     balloons[balloon._id].message = balloon.message;
     balloons[balloon._id].owner = balloon.owner;
     balloons[balloon._id].popped = true;
-  openModal(balloons[balloon._id].message);
+    balloons[balloon._id].showed = true;
+
+    openModal(balloons[balloon._id].message);
 
     return;
+  }else if(!balloons[balloon._id].showed){
+    balloons[balloon._id].marker.setIcon({
+      url: 'popped.png', 
+      scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
+    }); 
+    balloons[balloon._id].popped = true;
+    balloons[balloon._id].showed = true;
+    
+    openModal(balloons[balloon._id].message);
   }
 
-  balloons[balloon._id].marker.setIcon({
-    url: 'popped.png', 
-    scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
-  }); 
-  balloons[balloon._id].popped = true;
-  openModal(balloons[balloon._id].message);
 }
 
 
@@ -128,7 +133,10 @@ function fetchBalloons() {
       data.forEach(balloon => {
         //check if marker already exists in array of markers and has a valid coordinates
         if (balloon.lat != null) {
-          if (balloons[balloon._id] && !balloons[balloon._id].popped) {
+          if (balloons[balloon._id]) {
+            if(balloons[balloon._id].popped){
+              return;
+            }
             let marker = balloons[balloon._id].marker;
             animateMarker(marker, {lat: balloon.lat, lng: balloon.lng}, fetchInterval * 900);
           } else {
@@ -227,7 +235,6 @@ document.getElementById('myForm').addEventListener('submit', sendballoon);
 async function sendballoon(e) {
   e.preventDefault();
 
-  console.log(userGeolocation)
 
   console.log(document.querySelector("#name").value, userGeolocation.coords.longitude)
 
