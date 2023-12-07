@@ -13,8 +13,8 @@ async function main() {
         const collection = database.collection("baloons");
 
         const baloon = {
-            lat: 52.162209,
-            lng: 4.531729,
+            lat: 52.1452536,
+            lng: 4.473652,
             owner: "Simba",
             message: "I'm a lion!",
             timestamp: Long.fromNumber(Date.now()),

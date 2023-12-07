@@ -4,7 +4,7 @@ window.onload = function () {
 
 let map = {};
 let balloons = {};
-let fetchInterval = 5;// fetch balloons every 10 seconds
+let fetchInterval = 2;// fetch balloons every 10 seconds
 let userGeolocation = {};
 
 async function initMap() {
