@@ -138,6 +138,14 @@ function fetchBalloons() {
             if(balloons[balloon._id].popped){
               return;
             }
+            if(balloon.popped){
+              balloons[balloon._id].marker.setIcon({
+                url: 'popped.png', 
+                scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
+              }); 
+              balloons[balloon._id].popped = true;
+              balloons[balloon._id].showed = true;
+            }
             let marker = balloons[balloon._id].marker;
             animateMarker(marker, {lat: balloon.lat, lng: balloon.lng}, fetchInterval * 900);
           } else {
