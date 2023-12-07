@@ -148,7 +148,7 @@ function fetchBalloons() {
               },
               map,
               icon: {
-                url: balloon.popped ? './baloon.png' : './popped.png',
+                url: balloon.popped ? './popped.png' : './baloon.png',
                 scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
               },
             });
