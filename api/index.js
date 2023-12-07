@@ -99,6 +99,7 @@ app.get('/popped-baloons', async (req, res) => {
       }
 
       let distance = calculateDistance(userCoordinates.lat, userCoordinates.lng, balloonCoordinates.lat, balloonCoordinates.lng);
+      console.log(`Baloon: ${balloon._id}, distance: ${distance}`);
       return distance < 100;
     });
 
