@@ -136,12 +136,7 @@ function fetchBalloons() {
         if (balloon.lat != null) {
           if (balloons[balloon._id]) {
             if(balloons[balloon._id].popped){
-              balloons[balloon._id].marker.setIcon({
-                url: 'popped.png', 
-                scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
-              });
-              balloons[balloon._id].popped = false;
-              balloons[balloon._id].showed = true;
+              return;
             }
             let marker = balloons[balloon._id].marker;
             animateMarker(marker, {lat: balloon.lat, lng: balloon.lng}, fetchInterval * 900);
@@ -153,7 +148,7 @@ function fetchBalloons() {
               },
               map,
               icon: {
-                url: './baloon.png',
+                url: balloon.popped ? './baloon.png' : './popped.png',
                 scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
               },
             });
@@ -161,7 +156,7 @@ function fetchBalloons() {
             balloons[balloon._id].marker = marker;
             balloons[balloon._id].message = balloon.message;
             balloons[balloon._id].owner = balloon.owner;
-            balloons[balloon._id].popped = false;
+            balloons[balloon._id].popped = balloon.popped;
           }
         }
       });
