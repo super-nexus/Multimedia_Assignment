@@ -4,7 +4,7 @@ window.onload = function () {
 
 let map = {};
 let balloons = {};
-let fetchInterval = 10;// fetch balloons every 10 seconds
+let fetchInterval = 5;// fetch balloons every 10 seconds
 
 async function initMap() {
 
@@ -24,14 +24,19 @@ async function initMap() {
 
 async function searchBalloon(){
 
-  let userGeoLocation = await getUserGeolocation()
+  let userGeoLocation = await getUserGeolocation();
   var requestOptions = {
     method: 'GET',
     redirect: 'follow'
   };
+
+  let lat = userGeoLocation.coords.latitude;
+  let lng = userGeoLocation.coords.longitude;
   
-  fetch(`http://localhost:3000/popped-baloons?lat=52.1684517&lng=4.457985`, requestOptions)
-    .then(response => response.json())
+  fetch(`http://localhost:3000/popped-baloons?lat=${lat}&lng=${lng}`, requestOptions)
+    .then(response => {
+      return response.json();
+    })
     .then(data=>{
       data.forEach(balloon=>{
         console.log(balloon)
@@ -59,6 +64,7 @@ function animateMarker(marker, startPos, duration) {
 }
 
 function fetchBalloons() {
+  console.log("Fetching balloons");
   var requestOptions = {
     method: 'GET',
     redirect: 'follow'

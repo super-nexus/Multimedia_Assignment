@@ -1,4 +1,4 @@
-refresh_time_secs: 10
+refresh_time_secs: 1
 wind_speed_factor: 1.0
 max_weather_distance_km: 10
 max_cluster_distance_km: 10.0

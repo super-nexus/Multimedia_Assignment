@@ -88,7 +88,7 @@ app.get('/popped-baloons', async (req, res) => {
     if(poppedArray.length>0){
       res.status(200).send(poppedArray);
     }else{
-      res.status(200).send('No balloon popped');
+      res.status(200).send([]);
     }
  
   } catch (err) {
