@@ -21,6 +21,21 @@ async function connectDB() {
   }
 }
 
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // radius of the Earth in meters
+  const phi1 = lat1 * Math.PI / 180; // convert degrees to radians
+  const phi2 = lat2 * Math.PI / 180;
+  const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+  const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // distance in meters
+}
+
 const database = client.db("baloon-service");
 const collection = database.collection("baloons");
 
@@ -33,7 +48,7 @@ app.use(express.json());
 */
 app.get("/baloons", async (req, res) => {
   try {
-    const result = await collection.find({ popped: false }).toArray();
+    const result = await collection.find({}).toArray();
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send();
@@ -72,25 +87,22 @@ app.get('/popped-baloons', async (req, res) => {
   try {
     const result = await collection.find({ popped: true }).toArray();
 
-    let radius = 0.2; // This is for defining a radius parameter to check if the user close enough
-    let poppedArray = [];
-
     let userCoordinates = {
       lat: req.query.lat,
       lng: req.query.lng
     }
-    result.forEach(balloon=>{
-      if (balloon.lat-radius<userCoordinates.lat & userCoordinates.lat<balloon.lat+radius & balloon.lng-radius<userCoordinates.lng & userCoordinates.lng<balloon.lng+radius){
-        poppedArray.push(balloon)
+
+    let poppedArray = result.filter(balloon => {
+      let balloonCoordinates = {
+        lat: balloon.lat,
+        lng: balloon.lng
       }
-    })
-   
-    if(poppedArray.length>0){
-      res.status(200).send(poppedArray);
-    }else{
-      res.status(200).send([]);
-    }
- 
+
+      let distance = calculateDistance(userCoordinates.lat, userCoordinates.lng, balloonCoordinates.lat, balloonCoordinates.lng);
+      return distance < 100;
+    });
+
+    res.status(200).send(poppedArray);
   } catch (err) {
     res.status(500).send();
     console.log(err.stack);
