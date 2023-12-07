@@ -63,6 +63,20 @@ function animateMarker(marker, startPos, duration) {
   requestAnimationFrame(animate);
 }
 
+function createMarker(lat, lng) {
+ return new google.maps.Marker({
+    position: {
+      lat: lat,
+      lng: lng
+    },
+    map,
+    icon: {
+      url: './baloon.png',
+      scaledSize: new google.maps.Size(20, 20),  // 20x20 pixels
+    },
+  });
+}
+
 function fetchBalloons() {
   console.log("Fetching balloons");
   var requestOptions = {
@@ -77,7 +91,7 @@ function fetchBalloons() {
         if (balloon.lat != null) {
           if (balloons[balloon._id]) {
             let marker = balloons[balloon._id].marker;
-            animateMarker(marker, marker.getPosition().toJSON(), 10000);
+            animateMarker(marker, {lat: balloon.lat, lng: balloon.lng}, fetchInterval * 1000);
           } else {
             const marker = new google.maps.Marker({
               position: {
